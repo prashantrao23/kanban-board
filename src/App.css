@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+.app-shell {
+  min-height: 100vh;
+  background: var(--app-background, #f7f9fb);
+}

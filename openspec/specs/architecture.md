@@ -34,6 +34,7 @@ data/
 - Small reusable components
 - Single Responsibility Principle
 - Feature-based composition
-- Local state only
+- A lightweight shared store for board state, rather than unnecessary abstraction layers
 - No backend
 - LocalStorage persistence
+- Keep the implementation simple enough for a small, single-page board experience

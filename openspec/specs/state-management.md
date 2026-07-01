@@ -1,57 +1,38 @@
 # State Management
 
-Global Store
+## Store Shape
 
-tasks
+The board can be managed with a single lightweight Zustand store containing:
 
-filters
+- tasks
+- selected task for editing, if needed
+- a minimal UI state for modal visibility
 
-theme
+## Actions
 
-Actions
+- createTask()
+- updateTask()
+- deleteTask()
+- moveTask()
+- loadTasks()
+- saveTasks()
 
-createTask()
-
-updateTask()
-
-deleteTask()
-
-moveTask()
-
-searchTask()
-
-saveTasks()
-
-loadTasks()
-
-Data Flow
+## Data Flow
 
 UI
-
 ↓
-
 Store
-
 ↓
-
 localStorage
-
 ↓
-
 UI Update
 
-Optimistic Update
+## Update Strategy
 
-User action
+- User actions should update the store immediately so the UI feels responsive.
+- Persistence should happen after the state update, but failures should not crash the experience.
+- If storage fails, the UI should continue to work using the in-memory state.
 
-↓
+## Notes
 
-Immediate UI update
-
-↓
-
-Persist data
-
-↓
-
-Rollback on failure
+Search and theme state should be deferred until they are explicitly added to scope. The MVP should avoid extra abstractions beyond a simple shared store.

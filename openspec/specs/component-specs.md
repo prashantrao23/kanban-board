@@ -4,9 +4,9 @@
 
 Responsibilities
 
-- Show application title
-- Search tasks
-- Toggle theme
+- Show the application title
+- Provide a board-level search affordance if the feature is later introduced
+- Keep the shell minimal for the MVP
 
 Props
 
@@ -19,7 +19,8 @@ None
 Responsibilities
 
 - Render all columns
-- Manage drag context
+- Manage drag context for task movement
+- Provide the overall board layout
 
 ---
 
@@ -27,10 +28,11 @@ Responsibilities
 
 Responsibilities
 
-- Display column title
-- Display task count
-- Render tasks
-- Highlight during drag
+- Display the column title
+- Display the task count
+- Render tasks in that column
+- Show an empty state when no tasks exist
+- Highlight during drag interaction
 
 Props
 
@@ -46,9 +48,9 @@ tasks
 
 Responsibilities
 
-- Display task details
-- Drag source
-- Open edit modal
+- Display task details such as title, priority, and due date
+- Support drag-and-drop interaction
+- Open the edit task flow
 
 Props
 
@@ -56,13 +58,14 @@ task
 
 ---
 
-## Create Task Modal
+## Task Form Modal
 
 Responsibilities
 
-- Create new task
-- Validate form
-- Submit task
+- Create or edit a task
+- Validate the form before submission
+- Submit task data to the store
+- Manage focus and keyboard behavior for accessibility
 
 Props
 
@@ -70,4 +73,6 @@ open
 
 onClose
 
-onCreate
+onSubmit
+
+mode
