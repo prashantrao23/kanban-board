@@ -1,5 +1,5 @@
 import { CalendarDays, Circle, Search, Sparkles, X } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import type { Priority, Task, TaskDraft, TaskStatus } from '@/types/task'
 import { generateId } from '@/utils/index'
 
@@ -35,6 +35,26 @@ function getInitialFormValues(task?: Task | null): TaskFormValues {
 export function CreateTaskModal({ open, task, onClose, onSubmit }: CreateTaskModalProps) {
   const [formValues, setFormValues] = useState<TaskFormValues>(() => getInitialFormValues(task))
   const [errors, setErrors] = useState<FormErrors>({})
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    const dialog = document.getElementById('task-dialog')
+    dialog?.focus()
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose()
+      }
+    }
+
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [open, onClose])
 
   if (!open) {
     return null
@@ -79,11 +99,18 @@ export function CreateTaskModal({ open, task, onClose, onSubmit }: CreateTaskMod
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-4">
-      <div className="w-full max-w-[640px] rounded-[24px] border border-slate-200 bg-white p-6 shadow-[0_20px_25px_-5px_rgba(15,23,42,0.1),0_8px_10px_-6px_rgba(15,23,42,0.1)]">
+      <div
+        id="task-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="task-dialog-title"
+        tabIndex={-1}
+        className="w-full max-w-[640px] rounded-[24px] border border-slate-200 bg-white p-6 shadow-[0_20px_25px_-5px_rgba(15,23,42,0.1),0_8px_10px_-6px_rgba(15,23,42,0.1)]"
+      >
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">{task ? 'Edit task' : 'Create task'}</p>
-            <h2 className="text-[24px] font-semibold text-slate-900">{task ? 'Update task' : 'New task'}</h2>
+            <h2 id="task-dialog-title" className="text-[24px] font-semibold text-slate-900">{task ? 'Update task' : 'New task'}</h2>
           </div>
           <button type="button" className="rounded-full p-2 text-slate-400" aria-label="Close modal" onClick={onClose}>
             <X size={18} />
@@ -99,8 +126,10 @@ export function CreateTaskModal({ open, task, onClose, onSubmit }: CreateTaskMod
               placeholder="Task title"
               value={formValues.title}
               onChange={(event) => handleFieldChange('title', event.target.value)}
+              aria-invalid={Boolean(errors.title)}
+              aria-describedby={errors.title ? 'task-title-error' : undefined}
             />
-            {errors.title ? <p className="mt-1 text-sm text-rose-600">{errors.title}</p> : null}
+            {errors.title ? <p id="task-title-error" className="mt-1 text-sm text-rose-600">{errors.title}</p> : null}
           </label>
 
           <label className="md:col-span-2 block" htmlFor="task-description">
