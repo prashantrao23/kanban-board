@@ -1,20 +1,26 @@
 import {
-  closestCorners,
+  closestCenter,
   DndContext,
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
+  pointerWithin,
+  rectIntersection,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
+  type Modifier,
   type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Columns3, LayoutList, Plus } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Column } from "@/components/Column";
-import { TaskCard } from "@/components/TaskCard";
+import { TaskCardOverlay } from "@/components/TaskCard";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useBoardStore } from "@/store/useBoardStore";
 import type { Task, TaskStatus } from "@/types/task";
 import { cn } from "@/utils/index";
@@ -25,6 +31,58 @@ const columns = [
   { key: "in-progress" as const, index: "03", title: "In Progress" },
   { key: "done" as const, index: "04", title: "Done" },
 ];
+
+/**
+ * Prefer the card under the pointer. If the pointer is over a column but not
+ * over a card (gaps, padding, empty space), snap to the nearest card in that
+ * column so drops land where the user expects.
+ */
+const collisionDetection: CollisionDetection = (args) => {
+  const pointerHits = pointerWithin(args);
+  const hits = pointerHits.length > 0 ? pointerHits : rectIntersection(args);
+
+  const cardHit = hits.find((hit) => !String(hit.id).startsWith("column-"));
+  if (cardHit) {
+    return [cardHit];
+  }
+
+  const columnHit = hits.find((hit) => String(hit.id).startsWith("column-"));
+  if (columnHit) {
+    const status = String(columnHit.id).replace("column-", "");
+    const columnCards = args.droppableContainers.filter(
+      (container) =>
+        container.data.current?.type === "task" &&
+        container.data.current?.columnId === status,
+    );
+    if (columnCards.length > 0) {
+      const nearest = closestCenter({
+        ...args,
+        droppableContainers: columnCards,
+      });
+      if (nearest.length > 0) {
+        return [nearest[0]];
+      }
+    }
+    return [columnHit];
+  }
+
+  return hits;
+};
+
+/** Keeps the floating card fully on screen horizontally while dragging. */
+const keepOverlayInViewportX: Modifier = ({
+  transform,
+  draggingNodeRect,
+  windowRect,
+}) => {
+  if (!draggingNodeRect || !windowRect) {
+    return transform;
+  }
+
+  const minX = -draggingNodeRect.left;
+  const maxX = windowRect.width - draggingNodeRect.right;
+  return { ...transform, x: Math.min(Math.max(transform.x, minX), maxX) };
+};
 
 export function Board() {
   const tasks = useBoardStore((state) => state.tasks);
@@ -44,6 +102,10 @@ export function Board() {
   const [mobileLayoutMode, setMobileLayoutMode] = useState<"stack" | "swipe">(
     "stack",
   );
+  // Mount exactly one column layout. dnd-kit tracks droppables/draggables by id,
+  // so rendering the desktop and mobile trees together (hidden with CSS) makes
+  // the hidden copy overwrite the visible one and breaks measuring.
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
 
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
@@ -91,8 +153,8 @@ export function Board() {
   }, [tasks]);
 
   const activeTask = useMemo(
-    () => filteredTasks.find((task) => task.id === activeTaskId) ?? null,
-    [activeTaskId, filteredTasks],
+    () => tasks.find((task) => task.id === activeTaskId) ?? null,
+    [activeTaskId, tasks],
   );
 
   const sensors = useSensors(
@@ -139,27 +201,48 @@ export function Board() {
         return;
       }
 
-      const targetStatus = overId.startsWith("column-")
-        ? (overId.replace("column-", "") as TaskStatus)
-        : (tasks.find((task) => task.id === overId)?.status ??
-          sourceTask.status);
-
-      const targetTasks = tasks.filter(
-        (task) => task.status === targetStatus && task.id !== activeId,
-      );
-      let targetIndex = targetTasks.length;
-
-      if (!overId.startsWith("column-")) {
-        const overTask = tasks.find((task) => task.id === overId);
-        if (overTask?.status === targetStatus) {
-          targetIndex = targetTasks.findIndex((task) => task.id === overId);
-          if (targetIndex < 0) {
-            targetIndex = targetTasks.length;
-          }
-        }
+      // Dropped onto a column container
+      if (overId.startsWith("column-")) {
+        const targetStatus = overId.replace("column-", "") as TaskStatus;
+        const targetColumnTasks = tasks.filter(
+          (task) => task.status === targetStatus && task.id !== activeId,
+        );
+        moveTask(activeId, targetStatus, targetColumnTasks.length);
+        return;
       }
 
-      moveTask(activeId, targetStatus, targetIndex);
+      // Dropped onto another task
+      const overTask = tasks.find((task) => task.id === overId);
+      if (!overTask) {
+        return;
+      }
+
+      const targetStatus = overTask.status;
+
+      if (sourceTask.status === targetStatus) {
+        // Reordering within the same column
+        const columnTasks = tasks.filter((t) => t.status === targetStatus);
+        const overIndex = columnTasks.findIndex((t) => t.id === overId);
+        if (overIndex >= 0) {
+          moveTask(activeId, targetStatus, overIndex);
+        }
+      } else {
+        // Moving across columns
+        const targetColumnTasks = tasks.filter(
+          (t) => t.status === targetStatus && t.id !== activeId,
+        );
+        const overIndex = targetColumnTasks.findIndex((t) => t.id === overId);
+        const translated = active.rect.current.translated;
+        const isBelowOver =
+          translated !== null &&
+          translated.top + translated.height / 2 >
+            over.rect.top + over.rect.height / 2;
+        const targetIndex =
+          overIndex >= 0
+            ? overIndex + (isBelowOver ? 1 : 0)
+            : targetColumnTasks.length;
+        moveTask(activeId, targetStatus, targetIndex);
+      }
     },
     [moveTask, tasks],
   );
@@ -169,10 +252,31 @@ export function Board() {
     setDraggedOverColumn(null);
   }, []);
 
+  const renderColumn = (
+    column: (typeof columns)[number],
+    className?: string,
+  ) => (
+    <Column
+      key={column.key}
+      status={column.key}
+      indexNumber={column.index}
+      title={column.title}
+      count={groupedTasks[column.key].length}
+      tasks={groupedTasks[column.key]}
+      empty={groupedTasks[column.key].length === 0}
+      isDraggingOver={draggedOverColumn === column.key}
+      className={className}
+      onAddTask={openCreateModal}
+      onEditTask={openEditModal}
+      onDeleteTask={deleteTask}
+      onMoveTask={moveTask}
+    />
+  );
+
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={collisionDetection}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
@@ -345,119 +449,72 @@ export function Board() {
           ) : null}
         </div>
 
-        {/* Desktop View: Clean 4-column Grid */}
-        <div className="hidden lg:grid lg:grid-cols-4 lg:gap-3.5">
-          {columns.map((column) => (
-            <Column
-              key={column.key}
-              status={column.key}
-              indexNumber={column.index}
-              title={column.title}
-              count={groupedTasks[column.key].length}
-              tasks={groupedTasks[column.key]}
-              empty={groupedTasks[column.key].length === 0}
-              isDraggingOver={draggedOverColumn === column.key}
-              onAddTask={openCreateModal}
-              onEditTask={openEditModal}
-              onDeleteTask={deleteTask}
-              onMoveTask={moveTask}
-            />
-          ))}
-        </div>
-
-        {/* Mobile & Tablet View */}
-        <div className="lg:hidden w-full min-w-0 max-w-full">
-          {activeMobileTab === "all" ? (
-            mobileLayoutMode === "stack" ? (
-              /* Stacked: columns stack vertically */
-              <div className="flex flex-col gap-3.5 w-full">
-                {columns.map((column) => (
-                  <Column
-                    key={column.key}
-                    status={column.key}
-                    indexNumber={column.index}
-                    title={column.title}
-                    count={groupedTasks[column.key].length}
-                    tasks={groupedTasks[column.key]}
-                    empty={groupedTasks[column.key].length === 0}
-                    isDraggingOver={draggedOverColumn === column.key}
-                    className="w-full min-w-0"
-                    onAddTask={openCreateModal}
-                    onEditTask={openEditModal}
-                    onDeleteTask={deleteTask}
-                    onMoveTask={moveTask}
-                  />
-                ))}
-              </div>
+        {/* Columns */}
+        {isDesktop ? (
+          <div className="grid grid-cols-4 gap-3.5">
+            {columns.map((column) => renderColumn(column))}
+          </div>
+        ) : (
+          <div className="w-full min-w-0 max-w-full">
+            {activeMobileTab === "all" ? (
+              mobileLayoutMode === "stack" ? (
+                /* Stacked: columns stack vertically */
+                <div className="flex flex-col gap-3.5 w-full">
+                  {columns.map((column) =>
+                    renderColumn(column, "w-full min-w-0"),
+                  )}
+                </div>
+              ) : (
+                /* Swipe: horizontal carousel (snapping is paused while dragging) */
+                <div
+                  className={cn(
+                    "flex gap-3 overflow-x-auto pb-3 touch-scroll w-full",
+                    activeTaskId ? "snap-none" : "snap-x snap-mandatory",
+                  )}
+                >
+                  {columns.map((column) => (
+                    <div
+                      key={column.key}
+                      className="snap-center w-[85vw] max-w-[340px] shrink-0"
+                    >
+                      {renderColumn(column, "w-full min-w-0")}
+                    </div>
+                  ))}
+                </div>
+              )
             ) : (
-              /* Swipe: horizontal carousel */
-              <div className="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory touch-scroll w-full">
-                {columns.map((column) => (
-                  <div
-                    key={column.key}
-                    className="snap-center w-[85vw] max-w-[340px] shrink-0"
-                  >
-                    <Column
-                      status={column.key}
-                      indexNumber={column.index}
-                      title={column.title}
-                      count={groupedTasks[column.key].length}
-                      tasks={groupedTasks[column.key]}
-                      empty={groupedTasks[column.key].length === 0}
-                      isDraggingOver={draggedOverColumn === column.key}
-                      className="w-full min-w-0"
-                      onAddTask={openCreateModal}
-                      onEditTask={openEditModal}
-                      onDeleteTask={deleteTask}
-                      onMoveTask={moveTask}
-                    />
-                  </div>
-                ))}
+              /* Single column view */
+              <div className="w-full">
+                {columns
+                  .filter((col) => col.key === activeMobileTab)
+                  .map((column) => renderColumn(column, "w-full min-w-0"))}
               </div>
-            )
-          ) : (
-            /* Single column view */
-            <div className="w-full">
-              {columns
-                .filter((col) => col.key === activeMobileTab)
-                .map((column) => (
-                  <Column
-                    key={column.key}
-                    status={column.key}
-                    indexNumber={column.index}
-                    title={column.title}
-                    count={groupedTasks[column.key].length}
-                    tasks={groupedTasks[column.key]}
-                    empty={groupedTasks[column.key].length === 0}
-                    isDraggingOver={draggedOverColumn === column.key}
-                    className="w-full min-w-0"
-                    onAddTask={openCreateModal}
-                    onEditTask={openEditModal}
-                    onDeleteTask={deleteTask}
-                    onMoveTask={moveTask}
-                  />
-                ))}
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </main>
 
-      <DragOverlay
-        dropAnimation={{
-          duration: 150,
-          easing: "cubic-bezier(0.22, 1, 0.36, 1)",
-        }}
-      >
-        {activeTask ? (
-          <TaskCard
-            task={activeTask}
-            onEdit={() => undefined}
-            onDelete={() => undefined}
-            onMove={() => undefined}
-            isOverlay
-          />
-        ) : null}
-      </DragOverlay>
+      {typeof document !== "undefined"
+        ? createPortal(
+            <DragOverlay
+              modifiers={[keepOverlayInViewportX]}
+              dropAnimation={{
+                duration: 150,
+                easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+              }}
+            >
+              {activeTask ? (
+                <TaskCardOverlay
+                  task={activeTask}
+                  onEdit={() => undefined}
+                  onDelete={() => undefined}
+                  onMove={() => undefined}
+                />
+              ) : null}
+            </DragOverlay>,
+            document.body,
+          )
+        : null}
     </DndContext>
   );
 }

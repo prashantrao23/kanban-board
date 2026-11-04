@@ -1,7 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CalendarDays, GripVertical, PencilLine, Trash2 } from "lucide-react";
-import { memo } from "react";
+import { memo, type CSSProperties, type HTMLAttributes, type Ref } from "react";
 import type { Task, TaskStatus } from "@/types/task";
 import { cn } from "@/utils/index";
 
@@ -34,45 +34,41 @@ const statusOptions: Array<{ value: TaskStatus; label: string }> = [
   { value: "done", label: "Done" },
 ];
 
-export const TaskCard = memo(function TaskCard({
+interface TaskCardViewProps extends TaskCardProps {
+  articleRef?: Ref<HTMLElement>;
+  style?: CSSProperties;
+  isDragging?: boolean;
+  handleProps?: HTMLAttributes<HTMLButtonElement>;
+}
+
+/**
+ * Pure presentational card. It never touches dnd-kit hooks, so it is safe to
+ * render inside <DragOverlay> without registering a duplicate draggable.
+ */
+function TaskCardView({
   task,
   onEdit,
   onDelete,
   onMove,
   isOverlay = false,
-}: TaskCardProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: task.id,
-    data: { type: "task", task, columnId: task.status },
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  // const shortId = task.id.split("-").pop() ?? task.id.slice(0, 6);
-
+  articleRef,
+  style,
+  isDragging = false,
+  handleProps,
+}: TaskCardViewProps) {
   return (
     <article
-      ref={setNodeRef}
+      ref={articleRef}
       style={style}
       className={cn(
-        "group rounded-lg border border-[#e4ded4] bg-white p-3 sm:p-3.5 shadow-[0_1px_2px_rgba(31,27,22,0.04)] transition-all hover:border-[#d5cdbf]",
-        isDragging && "opacity-40 border-dashed border-[#b44c1e]",
+        "group w-full rounded-lg border border-[#e4ded4] bg-white p-3 sm:p-3.5 shadow-[0_1px_2px_rgba(31,27,22,0.04)] transition-colors hover:border-[#d5cdbf]",
+        isDragging && !isOverlay && "opacity-40",
         isOverlay &&
-          "cursor-grabbing border-[#b44c1e]/40 bg-white shadow-[0_10px_24px_rgba(31,27,22,0.12)]",
+          "cursor-grabbing shadow-[0_10px_24px_rgba(31,27,22,0.14)] pointer-events-none select-none",
       )}
       aria-label={`${task.title} task card`}
     >
-      {/* Header: Priority & ID & Drag Handle */}
+      {/* Header: Priority & Drag Handle */}
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 flex-wrap">
           <span
@@ -93,8 +89,7 @@ export const TaskCard = memo(function TaskCard({
           style={{ touchAction: "none" }}
           className="touch-none cursor-grab p-1 text-[#7b7266] opacity-60 transition hover:opacity-100 active:cursor-grabbing focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#b44c1e]"
           aria-label={`Drag ${task.title}`}
-          {...attributes}
-          {...listeners}
+          {...handleProps}
         >
           <GripVertical size={14} />
         </button>
@@ -174,4 +169,34 @@ export const TaskCard = memo(function TaskCard({
       ) : null}
     </article>
   );
+}
+
+export const TaskCard = memo(function TaskCard(props: TaskCardProps) {
+  const { task } = props;
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: task.id,
+    data: { type: "task", task, columnId: task.status },
+  });
+
+  return (
+    <TaskCardView
+      {...props}
+      articleRef={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      isDragging={isDragging}
+      handleProps={{ ...attributes, ...listeners }}
+    />
+  );
 });
+
+/** Static copy of the card used inside <DragOverlay>. */
+export function TaskCardOverlay(props: Omit<TaskCardProps, "isOverlay">) {
+  return <TaskCardView {...props} isOverlay />;
+}
