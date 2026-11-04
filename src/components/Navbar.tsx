@@ -1,57 +1,84 @@
-import { Filter, Moon, Search, UserRound } from 'lucide-react'
+import { Filter, Layers, Search, X } from 'lucide-react'
 import { useBoardStore } from '@/store/useBoardStore'
 import type { Priority } from '@/types/task'
 
 export function Navbar() {
+  const tasks = useBoardStore((state) => state.tasks)
   const searchQuery = useBoardStore((state) => state.searchQuery)
   const priorityFilter = useBoardStore((state) => state.priorityFilter)
   const setSearchQuery = useBoardStore((state) => state.setSearchQuery)
   const setPriorityFilter = useBoardStore((state) => state.setPriorityFilter)
 
   return (
-    <header className="rounded-[24px] border border-slate-200 bg-white/90 px-6 py-4 shadow-[0_1px_3px_0_rgba(15,23,42,0.08),0_1px_2px_-1px_rgba(15,23,42,0.06)] backdrop-blur">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-indigo-50 text-indigo-600">
-            <span className="text-lg font-semibold">K</span>
+    <header className="rounded-xl border border-[#e4ded4] bg-[#fdfbf7] p-3 sm:px-5 sm:py-3.5 shadow-[0_1px_2px_rgba(31,27,22,0.04)]">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {/* Brand row */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg bg-[#f5ebe4] text-[#b44c1e] border border-[#ebd8cc] shrink-0">
+              <Layers size={16} strokeWidth={1.75} className="sm:hidden" />
+              <Layers size={17} strokeWidth={1.75} className="hidden sm:block" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h1 className="text-sm sm:text-base font-medium tracking-tight text-[#1f1b16]">Kinetic Board</h1>
+                <span className="rounded border border-[#e4ded4] bg-[#efe9df] px-1 py-0.2 sm:px-1.5 sm:py-0.5 font-mono text-[10px] sm:text-[11px] tabular-nums text-[#7b7266]">
+                  v1.0
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-[#7b7266]">Product launch tracking</p>
+            </div>
           </div>
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Productivity Suite</p>
-            <h1 className="text-[24px] font-semibold text-slate-900">Kinetic Board</h1>
+
+          {/* Mobile task count tag */}
+          <div className="flex sm:hidden items-center gap-1 rounded-md border border-[#e4ded4] bg-[#efe9df]/40 px-2 py-1 text-[11px] text-[#7b7266]">
+            <span className="font-mono font-medium tabular-nums text-[#1f1b16]">{tasks.length}</span>
+            <span>tasks</span>
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <label className="flex min-w-[240px] items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2.5">
-            <Search size={16} className="text-slate-400" />
+        {/* Search & Filter row */}
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          <label className="relative flex flex-1 sm:w-56 sm:flex-initial items-center gap-2 rounded-lg border border-[#e4ded4] bg-[#efe9df]/40 px-2.5 py-1.5 text-sm transition-colors focus-within:border-[#b44c1e] focus-within:bg-[#fdfbf7]">
+            <Search size={14} className="text-[#7b7266] shrink-0" />
             <input
-              className="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
+              className="w-full bg-transparent text-xs sm:text-sm text-[#1f1b16] placeholder:text-[#7b7266] outline-none"
               placeholder="Search tasks"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
             />
-          </label>
-          <div className="flex items-center gap-2">
-            <label className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700">
-              <Filter size={16} />
-              <select
-                className="bg-transparent text-sm outline-none"
-                value={priorityFilter}
-                onChange={(event) => setPriorityFilter(event.target.value as Priority | 'all')}
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="text-[#7b7266] hover:text-[#1f1b16] p-0.5"
+                aria-label="Clear search"
               >
-                <option value="all">All priorities</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
-            </label>
-            <button type="button" className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600">
-              <Moon size={16} />
-            </button>
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700">
-              <UserRound size={16} />
-            </div>
+                <X size={12} />
+              </button>
+            ) : null}
+          </label>
+
+          <label className="flex items-center gap-1.5 sm:gap-2 rounded-lg border border-[#e4ded4] bg-[#efe9df]/40 px-2 sm:px-2.5 py-1.5 text-xs sm:text-sm text-[#5e554a] transition-colors hover:bg-[#efe9df] shrink-0">
+            <Filter size={13} className="text-[#7b7266] shrink-0 sm:hidden" />
+            <Filter size={14} className="text-[#7b7266] shrink-0 hidden sm:block" />
+            <select
+              className="cursor-pointer bg-transparent text-xs sm:text-sm text-[#5e554a] outline-none"
+              value={priorityFilter}
+              onChange={(event) => setPriorityFilter(event.target.value as Priority | 'all')}
+            >
+              <option value="all">All priorities</option>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+          </label>
+
+          {/* Desktop task count indicator */}
+          <div className="hidden sm:flex items-center gap-1.5 rounded-lg border border-[#e4ded4] bg-[#efe9df]/30 px-2.5 py-1.5 text-xs text-[#7b7266] shrink-0">
+            <span className="font-mono font-medium tabular-nums text-[#1f1b16]">{tasks.length}</span>
+            <span>total tasks</span>
           </div>
         </div>
       </div>

@@ -1,27 +1,44 @@
 :root {
-  font-family: Inter, 'Segoe UI', Roboto, sans-serif;
-  color: #191c1e;
-  background-color: #f7f9fb;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #1f1b16;
+  background-color: #f7f4ee;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  --app-background: #f7f9fb;
-  --surface: #ffffff;
-  --surface-muted: #f2f4f6;
-  --border: #e2e8f0;
-  --primary: #3525cd;
-  --primary-soft: #e8e6ff;
+
+  --app-background: #f7f4ee;
+  --surface: #fdfbf7;
+  --surface-raised: #efe9df;
+  --surface-hover: #e8e2d7;
+  --border: #e4ded4;
+  --border-subtle: #ede8df;
+  --text-primary: #1f1b16;
+  --text-secondary: #5e554a;
+  --text-muted: #7b7266;
+  --accent: #b44c1e;
+  --accent-soft: #f5ebe4;
+  --accent-hover: #9c3e16;
 }
 
 html,
-body,
-#root {
+body {
   margin: 0;
   min-height: 100%;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100%;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
   min-height: 100vh;
   background: var(--app-background);
+  color: var(--text-primary);
 }

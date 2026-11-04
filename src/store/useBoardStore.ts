@@ -5,6 +5,49 @@ import { generateId } from '@/utils/index'
 const STORAGE_KEY = 'kanban-board.tasks'
 const statusOrder: TaskStatus[] = ['backlog', 'todo', 'in-progress', 'done']
 
+const INITIAL_SEED_TASKS: Task[] = [
+  {
+    id: 'task-auth-tokens',
+    title: 'Audit token expiration and refresh flow',
+    description: 'Ensure session timeout correctly revokes stale refresh tokens before staging deployment.',
+    status: 'done',
+    priority: 'high',
+    labels: [{ id: 'lbl-eng', name: 'Engineering', color: '#2e7d4f' }],
+    dueDate: '2026-11-01',
+    createdAt: '2026-10-28T09:00:00.000Z',
+  },
+  {
+    id: 'task-perf-metrics',
+    title: 'Profile bundle size and code-split vendor chunks',
+    description: 'Keep core landing bundle under 150kb gzip and defer secondary route chunks.',
+    status: 'in-progress',
+    priority: 'urgent',
+    labels: [{ id: 'lbl-perf', name: 'Performance', color: '#b44c1e' }],
+    dueDate: '2026-11-06',
+    createdAt: '2026-10-29T10:30:00.000Z',
+  },
+  {
+    id: 'task-a11y-audit',
+    title: 'Keyboard navigation redline for modal and cards',
+    description: 'Verify tab order, focus traps, and escape key dismiss across all dialogs.',
+    status: 'todo',
+    priority: 'medium',
+    labels: [{ id: 'lbl-a11y', name: 'Accessibility', color: '#b45309' }],
+    dueDate: '2026-11-09',
+    createdAt: '2026-10-30T14:15:00.000Z',
+  },
+  {
+    id: 'task-docs-release',
+    title: 'Draft changelog notes and API migration guide',
+    description: 'Summarize breaking changes and config updates for external integrators.',
+    status: 'backlog',
+    priority: 'low',
+    labels: [{ id: 'lbl-docs', name: 'Docs', color: '#5e554a' }],
+    dueDate: '2026-11-14',
+    createdAt: '2026-10-31T11:00:00.000Z',
+  },
+]
+
 interface BoardState {
   tasks: Task[]
   searchQuery: string
@@ -46,23 +89,23 @@ function isTask(value: unknown): value is Task {
 
 function readTasksFromStorage(): Task[] {
   if (typeof window === 'undefined') {
-    return []
+    return INITIAL_SEED_TASKS
   }
 
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) {
-      return []
+    if (raw === null) {
+      return INITIAL_SEED_TASKS
     }
 
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) {
-      return []
+      return INITIAL_SEED_TASKS
     }
 
     return parsed.filter(isTask)
   } catch {
-    return []
+    return INITIAL_SEED_TASKS
   }
 }
 
@@ -89,7 +132,7 @@ function reorderTaskList(tasks: Task[], taskId: string, status: TaskStatus, targ
   const grouped = statusOrder.reduce<Record<TaskStatus, Task[]>>((accumulator, columnStatus) => {
     accumulator[columnStatus] = []
     return accumulator
-  }, {} as Record<TaskStatus, Task[]>)
+  }, { backlog: [], todo: [], 'in-progress': [], done: [] })
 
   tasks.forEach((task) => {
     if (task.id !== taskId) {

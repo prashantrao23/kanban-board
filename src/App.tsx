@@ -22,10 +22,10 @@ function App() {
   }, [loadTasks])
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.95),_rgba(247,249,251,0.95))] px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#f7f4ee] px-3.5 py-4 text-[#1f1b16] sm:px-6 sm:py-6 lg:px-8 lg:py-7">
+      <div className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-4 sm:gap-6">
         {persistError ? (
-          <div className="rounded-[16px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          <div className="rounded-lg border border-[#e4ded4] bg-[#fbf3db] px-4 py-2.5 text-xs sm:text-sm text-[#854d0e]">
             {persistError}
           </div>
         ) : null}

@@ -2,5 +2,20 @@
 
 .app-shell {
   min-height: 100vh;
-  background: var(--app-background, #f7f9fb);
+  background: var(--app-background, #f7f4ee);
+  color: var(--text-primary, #1f1b16);
+}
+
+/* Hide scrollbar on horizontal tab bar */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Momentum scrolling on iOS */
+.touch-scroll {
+  -webkit-overflow-scrolling: touch;
 }
