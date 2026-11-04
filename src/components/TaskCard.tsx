@@ -58,7 +58,7 @@ export const TaskCard = memo(function TaskCard({
     transition,
   };
 
-  const shortId = task.id.split("-").pop() ?? task.id.slice(0, 6);
+  // const shortId = task.id.split("-").pop() ?? task.id.slice(0, 6);
 
   return (
     <article
